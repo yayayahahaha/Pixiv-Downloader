@@ -13,8 +13,10 @@
 // 查詢結果如果過多的話該怎麼辦?
 // electron 平台的實作
 // Puppeteer 操偶師的實作必要性研究?
-
 import fs from 'fs'
+import utilsInstance from './utils/index.js'
+const { inputChecker } = utilsInstance
+
 // const { TaskSystem, download } = require('npm-flyc')
 // TODO
 // SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的 -> 這個會被 Google 的機器人驗正檔下來
@@ -55,13 +57,17 @@ const { fetchConfig } = headersInstance
 
 function start() {
   // 確認input 資料
-  const inputChecked = inputChecker()
-  if (!inputChecked) return
+  const [inputData, errorMessage] = inputChecker()
+  if (errorMessage) return void console.log(errorMessage)
+
+  console.log('inputData:', inputData)
 }
 start()
 
 // 故事從這裡開始
 ;(async (eachPageInterval = 60) => {
+  if (console) return
+
   const result = await fetch(
     'https://www.pixiv.net/rpc/index.php?mode=message_thread_unread_count&lang=zh_tw',
     {
@@ -71,9 +77,6 @@ start()
   console.log(await result.json())
 
   return
-  // 確認input 資料
-  const inputChecked = inputChecker()
-  if (!inputChecked) return
 
   // 宣告變數
   const {
@@ -132,39 +135,6 @@ function request(config) {
   return axios(config)
     .then(({ data }) => [data, null])
     .catch((error) => [null, error])
-}
-
-function inputChecker() {
-  if (!fs.existsSync('./input.json')) {
-    console.log('請修改 input.json')
-    return false
-  }
-  const contents = fs.readFileSync('./input.json')
-  const inputJSON = JSON.parse(contents)
-
-  const keyword = inputJSON.keyword
-  const likedLevel =
-    typeof inputJSON.likedLevel === 'number' ? inputJSON.likedLevel : 500
-  const maxPage = typeof inputJSON.maxPage === 'number' ? inputJSON.maxPage : 0
-  const currentSESSID = inputJSON.SESSID
-
-  if (!keyword) {
-    console.log('請在 input.json 檔裡輸入關鍵字')
-    console.log('')
-    return false
-  }
-  if (!currentSESSID) {
-    console.log('請在 input.json 檔裡輸入SESSID')
-    console.log('')
-    return false
-  }
-
-  return {
-    keyword,
-    likedLevel,
-    maxPage,
-    currentSESSID,
-  }
 }
 
 // 第一次搜尋: 主要是取得總頁數

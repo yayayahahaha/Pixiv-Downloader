@@ -6,8 +6,8 @@
   "author": "flyc",
   "license": "MIT",
   "scripts": {
-    "dev-module": "node --experimental-modules index.mjs",
-    "dev": "node index.mjs"
+    "dev": "node --experimental-modules index.mjs",
+    "// dev": "node index.mjs"
   },
   "dependencies": {
     "node-fetch": "^2.6.1",

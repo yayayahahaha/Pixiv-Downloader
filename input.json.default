@@ -1,5 +1,6 @@
 {
-  "keyword": "",
-  "PHPSESSID": "",
-  "device_token": ""
+  keyword: "",
+  PHPSESSID: "",
+  likedLevel: "",
+  maxPage: ""
 }

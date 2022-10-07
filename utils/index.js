@@ -1,3 +1,5 @@
+const fs = require('fs')
+
 const { checkAndRead } = require('./path.js')
 const { getArtWorks, getPhotos } = require('../api/index.js')
 const { TaskSystem } = require('npm-flyc')
@@ -13,7 +15,11 @@ async function getParams(envPath = './input.json') {
 
 async function getAllArtWorks(config) {
   const { PHPSESSID, keyword, totalPages } = config
-  const tasks = _createGetArtWorksTasks({ PHPSESSID, keyword, totalPages }).slice(0, 1) // TODO testing codes
+  const tasks = _createGetArtWorksTasks({
+    PHPSESSID,
+    keyword,
+    totalPages,
+  }).slice(0, 1) // TODO testing codes
 
   const taskFactory = new TaskSystem(tasks, 5, { randomDelay: 1000 /* 毫秒 */ })
   const taskResults = await taskFactory.doPromise()
@@ -21,7 +27,7 @@ async function getAllArtWorks(config) {
   return taskResults.reduce((list, { data: [data, error] }) => {
     if (error) return list
     const {
-      data: { data: artWorks }
+      data: { data: artWorks },
     } = data
     return list.concat(artWorks)
   }, [])
@@ -38,7 +44,7 @@ async function getAllPhotos(payload) {
 }
 function _createGetPhotosTasks(config = {}) {
   const { PHPSESSID, artWorks } = config
-  return artWorks.map(artWork => {
+  return artWorks.map((artWork) => {
     const { id: artWorkId, userName, userId, title } = artWork
     return async function () {
       const [photoInfo, error] = await getPhotos(PHPSESSID, artWorkId)
@@ -60,4 +66,40 @@ function _createGetArtWorksTasks(config = {}) {
   })
 }
 
-module.exports = { getParams, getAllArtWorks, getAllPhotos }
+function inputChecker() {
+  let errorMessage = ''
+
+  if (!fs.existsSync('./input.json')) {
+    errorMessage = '請修改 input.json\n'
+    return [null, errorMessage]
+  }
+  const contents = fs.readFileSync('./input.json')
+  const inputJSON = JSON.parse(contents)
+
+  const keyword = inputJSON.keyword
+  const likedLevel =
+    typeof inputJSON.likedLevel === 'number' ? inputJSON.likedLevel : 500
+  const maxPage = typeof inputJSON.maxPage === 'number' ? inputJSON.maxPage : 0
+  const PHPSESSID = inputJSON.PHPSESSID
+
+  if (!keyword) {
+    errorMessage = '請在 input.json 檔裡輸入關鍵字\n'
+    return [null, errorMessage]
+  }
+  if (!PHPSESSID) {
+    errorMessage = '請在 input.json 檔裡輸入SESSID\n'
+    return [null, errorMessage]
+  }
+
+  return [
+    {
+      keyword,
+      likedLevel,
+      maxPage,
+      PHPSESSID,
+    },
+    null,
+  ]
+}
+
+module.exports = { inputChecker, getParams, getAllArtWorks, getAllPhotos }

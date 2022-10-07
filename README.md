@@ -4,9 +4,9 @@ Download your favorite Pixiv images!
 
 ## How to use
 
-1. npm install  
+1. pnpm install
 2. modified the input.json file  
-3. npm run dev  
+3. npm run dev
 4. just wait  
 5. tada!
 

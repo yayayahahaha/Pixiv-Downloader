@@ -6,11 +6,12 @@
   "author": "flyc",
   "license": "MIT",
   "scripts": {
-    "dev": "node --experimental-modules index.mjs"
+    "dev-module": "node --experimental-modules index.mjs",
+    "dev": "node index.mjs"
   },
   "dependencies": {
-    "axios": "^0.18.1",
-    "npm-flyc": "^1.0.10"
-  },
-  "devDependencies": {}
+    "node-fetch": "^2.6.1",
+    "npm-flyc": "^1.0.19",
+    "qs": "^6.10.1"
+  }
 }

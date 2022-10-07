@@ -1,5 +1,3 @@
-// please make sure your nodejs version is higher than 10.4.0
-
 // TODO
 // 快取的機制的改進：
 // 清除快取的指令，清除全部、清除部分等等的
@@ -14,22 +12,21 @@
 // 攤平瀏覽
 // 查詢結果如果過多的話該怎麼辦?
 // electron 平台的實作
-// Puppeteer 操偶師的實作必要性研究
+// Puppeteer 操偶師的實作必要性研究?
 
 import fs from 'fs'
 // const { TaskSystem, download } = require('npm-flyc')
 // TODO
-// SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的
+// SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的 -> 這個會被 Google 的機器人驗正檔下來
 // 或是取得多組SESSID 後放進array 做輪詢減少單一帳號的loading 之類的
-let currentSESSID = ''
-
 const eachPageInterval = 60
 
 const getSearchHeader = function () {
   if (!currentSESSID) console.log('getSearchHeader: currentSESSID 為空！')
   return {
-    'accept-language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5',
-    cookie: `PHPSESSID=${currentSESSID};`
+    'accept-language':
+      'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5',
+    cookie: `PHPSESSID=${currentSESSID};`,
   }
 }
 const getSinegleHeader = function (illustId) {
@@ -38,7 +35,7 @@ const getSinegleHeader = function (illustId) {
     return {}
   }
   return {
-    referer: `https://www.pixiv.net/artworks/${illustId}`
+    referer: `https://www.pixiv.net/artworks/${illustId}`,
   }
 }
 const getKeywordsInfoUrl = function (keyword, page = 1) {
@@ -48,19 +45,30 @@ const getKeywordsInfoUrl = function (keyword, page = 1) {
 
 const defaultTaskSetting = function () {
   return {
-    randomDelay: 0
+    randomDelay: 0,
   }
 }
 
 import fetch from 'node-fetch'
-import { headers } from './utils/header.js'
+import headersInstance from './utils/header.js'
+const { fetchConfig } = headersInstance
+
+function start() {
+  // 確認input 資料
+  const inputChecked = inputChecker()
+  if (!inputChecked) return
+}
+start()
 
 // 故事從這裡開始
 ;(async (eachPageInterval = 60) => {
-  const result = await fetch('https://www.pixiv.net/rpc/index.php?mode=message_thread_unread_count&lang=zh_tw', {
-    headers
-  })
-  console.log(awaitresult.json())
+  const result = await fetch(
+    'https://www.pixiv.net/rpc/index.php?mode=message_thread_unread_count&lang=zh_tw',
+    {
+      headers,
+    }
+  )
+  console.log(await result.json())
 
   return
   // 確認input 資料
@@ -72,7 +80,7 @@ import { headers } from './utils/header.js'
     keyword,
     likedLevel,
     // maxPage, 暫時沒有用到
-    currentSESSID: ssid
+    currentSESSID: ssid,
   } = inputChecked
   currentSESSID = ssid // TODO: avoid using global variable
 
@@ -89,16 +97,23 @@ import { headers } from './utils/header.js'
   allPagesImagesArray = [keywordInfo].concat(allPagesImagesArray)
 
   // 扁平化
-  allPagesImagesArray = allPagesImagesArray.reduce((array, pageInfo) => array.concat(pageInfo.data), [])
+  allPagesImagesArray = allPagesImagesArray.reduce(
+    (array, pageInfo) => array.concat(pageInfo.data),
+    []
+  )
 
   // 綁定bookmarkCount 和likedCount
-  const formatedImagesArray = await bindingBookmarkCount(allPagesImagesArray, keyword)
+  const formatedImagesArray = await bindingBookmarkCount(
+    allPagesImagesArray,
+    keyword
+  )
 
   // 過濾星星數: bookmarkCount + likedCount
   const filterImagesArray = filterBookmarkCount(formatedImagesArray, likedLevel)
 
   // 分割出singleArray 和multipleArray
-  const { singleArray, multipleArray } = separateSingleAndMultiple(filterImagesArray)
+  const { singleArray, multipleArray } =
+    separateSingleAndMultiple(filterImagesArray)
 
   // 把task 展開: singleArray 的只會有一張、multiple 的會有多張
   const singleArray_format = fetchSingleImagesUrl(singleArray)
@@ -116,7 +131,7 @@ import { headers } from './utils/header.js'
 function request(config) {
   return axios(config)
     .then(({ data }) => [data, null])
-    .catch(error => [null, error])
+    .catch((error) => [null, error])
 }
 
 function inputChecker() {
@@ -128,7 +143,8 @@ function inputChecker() {
   const inputJSON = JSON.parse(contents)
 
   const keyword = inputJSON.keyword
-  const likedLevel = typeof inputJSON.likedLevel === 'number' ? inputJSON.likedLevel : 500
+  const likedLevel =
+    typeof inputJSON.likedLevel === 'number' ? inputJSON.likedLevel : 500
   const maxPage = typeof inputJSON.maxPage === 'number' ? inputJSON.maxPage : 0
   const currentSESSID = inputJSON.SESSID
 
@@ -147,7 +163,7 @@ function inputChecker() {
     keyword,
     likedLevel,
     maxPage,
-    currentSESSID
+    currentSESSID,
   }
 }
 
@@ -156,7 +172,7 @@ async function firstSearch(keyword) {
   const [firstPageData, error] = await request({
     method: 'get',
     url: getKeywordsInfoUrl(keyword),
-    headers: getSearchHeader()
+    headers: getSearchHeader(),
   })
   if (error) {
     console.error('取得資料失敗!')
@@ -174,10 +190,16 @@ async function getRestPages(keyword, totalPages) {
     searchFuncArray.push(_create_each_search_page(keyword, i))
   }
   const taskNumber = 40
-  const task_search = new TaskSystem(searchFuncArray, taskNumber, defaultTaskSetting())
+  const task_search = new TaskSystem(
+    searchFuncArray,
+    taskNumber,
+    defaultTaskSetting()
+  )
 
   let allPagesImagesArray = await task_search.doPromise()
-  allPagesImagesArray = allPagesImagesArray.map(result => result.data[0].body.illustManga)
+  allPagesImagesArray = allPagesImagesArray.map(
+    (result) => result.data[0].body.illustManga
+  )
   return allPagesImagesArray
 
   function _create_each_search_page(keyword, page) {
@@ -185,7 +207,7 @@ async function getRestPages(keyword, totalPages) {
       return request({
         method: 'get',
         url: getKeywordsInfoUrl(keyword, page),
-        headers: getSearchHeader()
+        headers: getSearchHeader(),
       })
     }
   }
@@ -211,39 +233,47 @@ async function bindingBookmarkCount(allPagesImagesArray, keyword) {
   const allPagesImagesMap = allPagesImagesArray.reduce(
     (map, item) =>
       Object.assign(map, {
-        [item.illustId]: item
+        [item.illustId]: item,
       }),
     {}
   )
 
   // 取得cache
   const cachedMap = getPageCache(allPagesImagesArray, keyword)
-  const noCacheImages = allPagesImagesArray.filter(image => !cachedMap[image.illustId])
+  const noCacheImages = allPagesImagesArray.filter(
+    (image) => !cachedMap[image.illustId]
+  )
 
   const taskArray = []
-  noCacheImages.forEach(imageItem => {
+  noCacheImages.forEach((imageItem) => {
     taskArray.push(_each_image_page(imageItem.illustId))
   })
   const taskNumber = taskNumberCreater()
-  const bookmarkTask = new TaskSystem(taskArray, taskNumber, defaultTaskSetting())
+  const bookmarkTask = new TaskSystem(
+    taskArray,
+    taskNumber,
+    defaultTaskSetting()
+  )
   const bookmarkTaskResult = await bookmarkTask.doPromise()
 
   const resultMap = {}
-  bookmarkTaskResult.forEach(result => Object.assign(resultMap, result.data.illust))
+  bookmarkTaskResult.forEach((result) =>
+    Object.assign(resultMap, result.data.illust)
+  )
 
   // cache 部分
   const cacheFilePath = `./caches/${keyword}.json`
   Object.assign(cachedMap, resultMap)
   fs.writeFileSync(cacheFilePath, JSON.stringify(cachedMap, null, 2))
 
-  Object.keys(allPagesImagesMap).forEach(illustId => {
+  Object.keys(allPagesImagesMap).forEach((illustId) => {
     const urls = cachedMap[illustId].urls
     const bookmarkCount = cachedMap[illustId].bookmarkCount
     const likeCount = cachedMap[illustId].likeCount
     Object.assign(allPagesImagesMap[illustId], {
       urls,
       bookmarkCount,
-      likeCount
+      likeCount,
     })
   })
 
@@ -254,12 +284,18 @@ async function bindingBookmarkCount(allPagesImagesArray, keyword) {
       return request({
         method: 'get',
         url: `https://www.pixiv.net/artworks/${illustId}`,
-        headers: getSearchHeader()
+        headers: getSearchHeader(),
       }).then(([data]) => {
-        const splitPattern1 = '<meta name="preload-data" id="meta-preload-data" content=\''
+        const splitPattern1 =
+          '<meta name="preload-data" id="meta-preload-data" content=\''
         const splitPattern2 = '</head>'
         const splitPattern3 = "'>"
-        return JSON.parse(data.split(splitPattern1)[1].split(splitPattern2)[0].split(splitPattern3)[0])
+        return JSON.parse(
+          data
+            .split(splitPattern1)[1]
+            .split(splitPattern2)[0]
+            .split(splitPattern3)[0]
+        )
       })
     }
   }
@@ -267,8 +303,8 @@ async function bindingBookmarkCount(allPagesImagesArray, keyword) {
 
 // 過濾星星: 把bookmarkCount + likeCount 少於目標數的剔除
 function filterBookmarkCount(map, level = 0) {
-  const list = Object.keys(map).map(id => map[id])
-  return list.filter(item => {
+  const list = Object.keys(map).map((id) => map[id])
+  return list.filter((item) => {
     const likedLevel = item.bookmarkCount + item.likeCount
     return likedLevel >= level
   })
@@ -290,7 +326,7 @@ function separateSingleAndMultiple(list) {
     },
     {
       singleArray: [],
-      multipleArray: []
+      multipleArray: [],
     }
   )
 }
@@ -315,7 +351,7 @@ function fetchSingleImagesUrl(list) {
       key,
       name,
       original,
-      type
+      type,
     }
   })
 }
@@ -325,19 +361,23 @@ async function fetchMultipleImagesUrl(list) {
     const mulImage = list[i]
     taskArray.push(_create_get_multiple_images(mulImage.illustId))
   }
-  const getMultiOriTask = new TaskSystem(taskArray, taskNumberCreater(), defaultTaskSetting())
+  const getMultiOriTask = new TaskSystem(
+    taskArray,
+    taskNumberCreater(),
+    defaultTaskSetting()
+  )
   const getMultiOriTaskResult = await getMultiOriTask.doPromise()
 
   const multiMap = list.reduce(
     (map, item) =>
       Object.assign(map, {
-        [item.illustId]: item
+        [item.illustId]: item,
       }),
     {}
   )
 
   let multiArray = []
-  getMultiOriTaskResult.forEach(result => {
+  getMultiOriTaskResult.forEach((result) => {
     const resultItem = result.data
     const illustId = resultItem.illustId
 
@@ -361,7 +401,7 @@ async function fetchMultipleImagesUrl(list) {
         key,
         name,
         original,
-        type
+        type,
       }
     })
     multiArray = multiArray.concat(multiImages)
@@ -374,11 +414,11 @@ async function fetchMultipleImagesUrl(list) {
       return request({
         method: 'get',
         url: `https://www.pixiv.net/ajax/illust/${illustId}/pages`,
-        headers: getSearchHeader()
+        headers: getSearchHeader(),
       }).then(([data]) => {
         return Object.assign({
           illustId,
-          data: data.body
+          data: data.body,
         })
       })
     }
@@ -398,14 +438,18 @@ async function startDownloadTask(sourceArray, keyword) {
 
   // for quick detect
   const existFolderMap = {
-    [keywordFolder]: true
+    [keywordFolder]: true,
   }
 
   const taskArray = []
   for (let i = 0; i < sourceArray.length; i++) {
     taskArray.push(_create_download_task(sourceArray[i], keywordFolder))
   }
-  const downloadTask = new TaskSystem(taskArray, taskNumberCreater(), defaultTaskSetting())
+  const downloadTask = new TaskSystem(
+    taskArray,
+    taskNumberCreater(),
+    defaultTaskSetting()
+  )
   const downloadTaskResult = await downloadTask.doPromise()
 
   return downloadTaskResult
@@ -428,7 +472,7 @@ async function startDownloadTask(sourceArray, keyword) {
       const headers = getSinegleHeader(image.id)
 
       return download(url, filePath, {
-        headers
+        headers,
       })
     }
   }

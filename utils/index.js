@@ -1,4 +1,5 @@
 const fs = require('fs')
+const qs = require('qs')
 
 const { checkAndRead } = require('./path.js')
 const { getArtWorks, getPhotos } = require('../api/index.js')
@@ -66,6 +67,38 @@ function _createGetArtWorksTasks(config = {}) {
   })
 }
 
+/**
+ * @function getKeywordsInfoUrl
+ * @description get keyword fetch url
+ * @return url<string>
+ * */
+function getKeywordsInfoUrl(keyword, page = 1) {
+  const basicUrl = `https://www.pixiv.net/ajax/search/artworks/${keyword}`
+  const query = {
+    word: keyword,
+    order: 'date',
+    mode: 'all',
+    p: page,
+    s_mode: 's_tag',
+    type: 'all',
+  }
+
+  const url = `${basicUrl}?${qs.stringify(query)}`
+  return encodeURI(url)
+}
+
+/**
+ * @typedef InputInfo
+ * @property keyword <string> - search keyword
+ * @property likedLevel <string> - max download liked-level
+ * @property maxPage <string> - TODO max fetch page
+ * @property PHPSESSID <string> - session
+ * */
+/**
+ * @function inputChecker
+ * @description check does input.json has needed parameters or not
+ * @return [parameters<InputInfo>, errorMessage<string>]
+ * */
 function inputChecker() {
   let errorMessage = ''
 
@@ -102,4 +135,10 @@ function inputChecker() {
   ]
 }
 
-module.exports = { inputChecker, getParams, getAllArtWorks, getAllPhotos }
+module.exports = {
+  inputChecker,
+  getKeywordsInfoUrl,
+  getParams,
+  getAllArtWorks,
+  getAllPhotos,
+}

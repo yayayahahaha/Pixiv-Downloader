@@ -12,16 +12,21 @@ const getArtWorks = async (sessionId, keyword, page) => {
       mode: 'all',
       s_mode: 's_tag',
       type: 'all',
-      lang: 'zh_tw'
+      lang: 'zh_tw',
     },
     { word, p }
   )
 
   const queryString = `?${qs.stringify(params)}`
-  const [response, error] = await request(`${url}${queryString}`, fetchConfig(sessionId))
+  const [response, error] = await request(
+    `${url}${queryString}`,
+    fetchConfig(sessionId)
+  )
   if (error) return [null, error]
 
-  const returnData = (({ data, total }) => ({ data, total }))(response?.body?.illustManga)
+  const returnData = (({ data, total }) => ({ data, total }))(
+    response?.body?.illustManga
+  )
   return [returnData, null]
 }
 
@@ -31,7 +36,7 @@ const getArtWorks = async (sessionId, keyword, page) => {
 const getPhotos = async (sessionId, artWorkId) => {
   const [[photos, photosError], [likedData, likedError]] = await Promise.all([
     getPhotoInfo(sessionId, artWorkId),
-    getPhotoLiked(sessionId, artWorkId)
+    getPhotoLiked(sessionId, artWorkId),
   ])
   if (photosError || likedError) return [null, { photosError, likedError }]
   const result = { photos, ...likedData }
@@ -45,7 +50,9 @@ const getPhotoLiked = async (sessionId, artWorkId) => {
   const [response, error] = await request(url, fetchConfig(sessionId))
   if (error) return [null, error]
 
-  const jsStr = response.split(/<meta name="preload-data" id="meta-preload-data" content='/)[1].split(/'>/)[0]
+  const jsStr = response
+    .split(/<meta name="preload-data" id="meta-preload-data" content='/)[1]
+    .split(/'>/)[0]
   try {
     const data = JSON.parse(jsStr).illust[artWorkId]
     const attributes = [
@@ -55,9 +62,12 @@ const getPhotoLiked = async (sessionId, artWorkId) => {
       'responseCount',
       'viewCount',
       'createDate',
-      'uploadDate'
+      'uploadDate',
     ]
-    const returnItem = attributes.reduce((map, key) => Object.assign(map, { [key]: data[key] }), {})
+    const returnItem = attributes.reduce(
+      (map, key) => Object.assign(map, { [key]: data[key] }),
+      {}
+    )
     return [returnItem, null]
   } catch (e) {
     return [null, e]
@@ -75,7 +85,9 @@ const getPhotoInfo = async (sessionId, artWorkId) => {
 }
 
 /**
- * @description 檢查登入狀態
+ * @function checkLoginStatus
+ * @description check login status
+ * @return isLogin<boolean>
  * */
 const checkLoginStatus = async function (sessionId) {
   const url = 'https://www.pixiv.net/ajax/linked_service/tumeng'
@@ -87,4 +99,10 @@ const checkLoginStatus = async function (sessionId) {
   return true
 }
 
-module.exports = { getArtWorks, checkLoginStatus, getPhotos, getPhotoLiked, getPhotoInfo }
+module.exports = {
+  getArtWorks,
+  checkLoginStatus,
+  getPhotos,
+  getPhotoLiked,
+  getPhotoInfo,
+}

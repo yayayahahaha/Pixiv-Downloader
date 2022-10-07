@@ -14,8 +14,12 @@
 // electron 平台的實作
 // Puppeteer 操偶師的實作必要性研究?
 import fs from 'fs'
+
 import utilsInstance from './utils/index.js'
-const { inputChecker } = utilsInstance
+const { inputChecker, getKeywordsInfoUrl } = utilsInstance
+
+import apiInstance from './api/index.js'
+const { checkLoginStatus } = apiInstance
 
 // const { TaskSystem, download } = require('npm-flyc')
 // TODO
@@ -26,8 +30,7 @@ const eachPageInterval = 60
 const getSearchHeader = function () {
   if (!currentSESSID) console.log('getSearchHeader: currentSESSID 為空！')
   return {
-    'accept-language':
-      'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5',
+    'accept-language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5',
     cookie: `PHPSESSID=${currentSESSID};`,
   }
 }
@@ -40,10 +43,6 @@ const getSinegleHeader = function (illustId) {
     referer: `https://www.pixiv.net/artworks/${illustId}`,
   }
 }
-const getKeywordsInfoUrl = function (keyword, page = 1) {
-  const url = `https://www.pixiv.net/ajax/search/artworks/${keyword}?word=${keyword}&order=date&mode=all&p=${page}&s_mode=s_tag&type=all`
-  return encodeURI(url)
-}
 
 const defaultTaskSetting = function () {
   return {
@@ -55,12 +54,23 @@ import fetch from 'node-fetch'
 import headersInstance from './utils/header.js'
 const { fetchConfig } = headersInstance
 
-function start() {
+async function start() {
   // 確認input 資料
   const [inputData, errorMessage] = inputChecker()
   if (errorMessage) return void console.log(errorMessage)
 
-  console.log('inputData:', inputData)
+  const { keyword, PHPSESSID } = inputData
+
+  console.log('檢查登入狀態...\n')
+
+  const isLogin = await checkLoginStatus(PHPSESSID)
+  // TODO 刷掉上面那行、然後後面加上 V 或是 X 表示登入成功或失敗
+  if (!isLogin) return void console.log('非登入狀態! 請檢查 PHPSESSID 是否正確或已過期')
+
+  console.log(`搜尋的關鍵字: ${keyword}\n`)
+
+  console.log('')
+  console.log('isLogin:', isLogin)
 }
 start()
 
@@ -68,12 +78,9 @@ start()
 ;(async (eachPageInterval = 60) => {
   if (console) return
 
-  const result = await fetch(
-    'https://www.pixiv.net/rpc/index.php?mode=message_thread_unread_count&lang=zh_tw',
-    {
-      headers,
-    }
-  )
+  const result = await fetch('https://www.pixiv.net/rpc/index.php?mode=message_thread_unread_count&lang=zh_tw', {
+    headers,
+  })
   console.log(await result.json())
 
   return
@@ -100,23 +107,16 @@ start()
   allPagesImagesArray = [keywordInfo].concat(allPagesImagesArray)
 
   // 扁平化
-  allPagesImagesArray = allPagesImagesArray.reduce(
-    (array, pageInfo) => array.concat(pageInfo.data),
-    []
-  )
+  allPagesImagesArray = allPagesImagesArray.reduce((array, pageInfo) => array.concat(pageInfo.data), [])
 
   // 綁定bookmarkCount 和likedCount
-  const formatedImagesArray = await bindingBookmarkCount(
-    allPagesImagesArray,
-    keyword
-  )
+  const formatedImagesArray = await bindingBookmarkCount(allPagesImagesArray, keyword)
 
   // 過濾星星數: bookmarkCount + likedCount
   const filterImagesArray = filterBookmarkCount(formatedImagesArray, likedLevel)
 
   // 分割出singleArray 和multipleArray
-  const { singleArray, multipleArray } =
-    separateSingleAndMultiple(filterImagesArray)
+  const { singleArray, multipleArray } = separateSingleAndMultiple(filterImagesArray)
 
   // 把task 展開: singleArray 的只會有一張、multiple 的會有多張
   const singleArray_format = fetchSingleImagesUrl(singleArray)
@@ -130,12 +130,6 @@ start()
 
   console.log('下載完成!')
 })(eachPageInterval)
-
-function request(config) {
-  return axios(config)
-    .then(({ data }) => [data, null])
-    .catch((error) => [null, error])
-}
 
 // 第一次搜尋: 主要是取得總頁數
 async function firstSearch(keyword) {
@@ -160,16 +154,10 @@ async function getRestPages(keyword, totalPages) {
     searchFuncArray.push(_create_each_search_page(keyword, i))
   }
   const taskNumber = 40
-  const task_search = new TaskSystem(
-    searchFuncArray,
-    taskNumber,
-    defaultTaskSetting()
-  )
+  const task_search = new TaskSystem(searchFuncArray, taskNumber, defaultTaskSetting())
 
   let allPagesImagesArray = await task_search.doPromise()
-  allPagesImagesArray = allPagesImagesArray.map(
-    (result) => result.data[0].body.illustManga
-  )
+  allPagesImagesArray = allPagesImagesArray.map((result) => result.data[0].body.illustManga)
   return allPagesImagesArray
 
   function _create_each_search_page(keyword, page) {
@@ -210,26 +198,18 @@ async function bindingBookmarkCount(allPagesImagesArray, keyword) {
 
   // 取得cache
   const cachedMap = getPageCache(allPagesImagesArray, keyword)
-  const noCacheImages = allPagesImagesArray.filter(
-    (image) => !cachedMap[image.illustId]
-  )
+  const noCacheImages = allPagesImagesArray.filter((image) => !cachedMap[image.illustId])
 
   const taskArray = []
   noCacheImages.forEach((imageItem) => {
     taskArray.push(_each_image_page(imageItem.illustId))
   })
   const taskNumber = taskNumberCreater()
-  const bookmarkTask = new TaskSystem(
-    taskArray,
-    taskNumber,
-    defaultTaskSetting()
-  )
+  const bookmarkTask = new TaskSystem(taskArray, taskNumber, defaultTaskSetting())
   const bookmarkTaskResult = await bookmarkTask.doPromise()
 
   const resultMap = {}
-  bookmarkTaskResult.forEach((result) =>
-    Object.assign(resultMap, result.data.illust)
-  )
+  bookmarkTaskResult.forEach((result) => Object.assign(resultMap, result.data.illust))
 
   // cache 部分
   const cacheFilePath = `./caches/${keyword}.json`
@@ -256,16 +236,10 @@ async function bindingBookmarkCount(allPagesImagesArray, keyword) {
         url: `https://www.pixiv.net/artworks/${illustId}`,
         headers: getSearchHeader(),
       }).then(([data]) => {
-        const splitPattern1 =
-          '<meta name="preload-data" id="meta-preload-data" content=\''
+        const splitPattern1 = '<meta name="preload-data" id="meta-preload-data" content=\''
         const splitPattern2 = '</head>'
         const splitPattern3 = "'>"
-        return JSON.parse(
-          data
-            .split(splitPattern1)[1]
-            .split(splitPattern2)[0]
-            .split(splitPattern3)[0]
-        )
+        return JSON.parse(data.split(splitPattern1)[1].split(splitPattern2)[0].split(splitPattern3)[0])
       })
     }
   }
@@ -331,11 +305,7 @@ async function fetchMultipleImagesUrl(list) {
     const mulImage = list[i]
     taskArray.push(_create_get_multiple_images(mulImage.illustId))
   }
-  const getMultiOriTask = new TaskSystem(
-    taskArray,
-    taskNumberCreater(),
-    defaultTaskSetting()
-  )
+  const getMultiOriTask = new TaskSystem(taskArray, taskNumberCreater(), defaultTaskSetting())
   const getMultiOriTaskResult = await getMultiOriTask.doPromise()
 
   const multiMap = list.reduce(
@@ -415,11 +385,7 @@ async function startDownloadTask(sourceArray, keyword) {
   for (let i = 0; i < sourceArray.length; i++) {
     taskArray.push(_create_download_task(sourceArray[i], keywordFolder))
   }
-  const downloadTask = new TaskSystem(
-    taskArray,
-    taskNumberCreater(),
-    defaultTaskSetting()
-  )
+  const downloadTask = new TaskSystem(taskArray, taskNumberCreater(), defaultTaskSetting())
   const downloadTaskResult = await downloadTask.doPromise()
 
   return downloadTaskResult

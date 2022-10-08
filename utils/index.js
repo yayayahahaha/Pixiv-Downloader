@@ -217,6 +217,26 @@ async function getPhotoByPages(sessionId, keyword, totalPages, { startPage = 1 }
 }
 
 /**
+ * @function syncCache
+ * @description sync cache with newest info by pushing them into history
+ * */
+function syncCache(cache, unique, item) {
+  const hashStr = hash(JSON.stringify(item))
+  const pk = item[unique]
+
+  // 原本不存在
+  if (!cache[pk]) {
+    cache[pk] = { history: [{ hash: hashStr, info: item }], hash: hashStr }
+    return
+  }
+  // 原本存在，但 hash 不一樣
+  if (cache[pk].hash !== hashStr) {
+    cache[pk].history.unshift({ hash: hashStr, info: item })
+    cache[pk].hash = hashStr
+  }
+}
+
+/**
  * @typedef
  * @reference https://stackoverflow.com/questions/9781218/how-to-change-node-jss-console-font-color
  * @description color code of nodejs
@@ -257,6 +277,18 @@ function hash(str) {
   return crypto.createHash('md5').update(str).digest('hex')
 }
 
+/**
+ * @function createOrLoadCache
+ * @description loading cahche by cachePath, if it's not exist just create one
+ * */
+function createOrLoadCache(cachePath, { defaultValue = {} } = {}) {
+  const exist = fs.existsSync(cachePath)
+
+  if (exist) return JSON.parse(fs.readFileSync(cachePath, 'utf8'))
+  writeFile({}, cachePath, { folder: 'hello' })
+  return defaultValue
+}
+
 module.exports = {
   inputChecker,
   getKeywordsInfoUrl,
@@ -265,6 +297,8 @@ module.exports = {
   writeFile,
   getPhotoByPages,
   hash,
+  syncCache,
+  createOrLoadCache,
 
   getParams,
   getAllArtWorks,

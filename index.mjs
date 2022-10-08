@@ -19,10 +19,16 @@
 // 或是取得多組SESSID 後放進array 做輪詢減少單一帳號的loading 之類的
 
 import fs from 'fs'
-import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages, hash } from './utils/index.js'
+import {
+  loading,
+  inputChecker,
+  colorMap,
+  writeFile,
+  getPhotoByPages,
+  syncCache,
+  createOrLoadCache,
+} from './utils/index.js'
 import { checkLoginStatus, getArtWorks } from './api/index.js'
-
-import MasterHouse from 'MasterHouse'
 
 const getSearchHeader = function () {
   if (!currentSESSID) console.log('getSearchHeader: currentSESSID 為空！')
@@ -40,11 +46,6 @@ const getSinegleHeader = function (illustId) {
     referer: `https://www.pixiv.net/artworks/${illustId}`,
   }
 }
-
-import fetch from 'node-fetch'
-import headersInstance from './utils/header.js'
-import { hasSubscribers } from 'diagnostics_channel'
-const { fetchConfig } = headersInstance
 
 function colorConsole(message, style) {
   const { Reset, FgYellow, FgRed, Bright } = colorMap
@@ -101,32 +102,10 @@ async function start() {
 
   // HINT 可以做 cache 的點
   const allPhotos = await getPhotoByPages(PHPSESSID, keyword, 10 /* TODO 一次的頁數? */)
-  allPhotos.forEach((photo) => {
-    const { id } = photo
-    const hashStr = hash(JSON.stringify(photo))
-
-    // 原本不存在
-    if (!cacheData[id]) {
-      cacheData[id] = { photoHistory: [{ hash: hashStr, photo }], hash: hashStr }
-      return
-    }
-    // 原本存在，但 hash 不一樣
-    if (cacheData[id].hash !== hashStr) {
-      cacheData[id].photoHistory.unshift({ hash: hashStr, photo })
-      cacheData[id].hash = hashStr
-    }
-  })
+  allPhotos.forEach((photo) => syncCache(cacheData, 'id', photo))
   writeFile(cacheData, cacheFileName)
 }
 start()
-
-function createOrLoadCache(cachePath) {
-  const exist = fs.existsSync(cachePath)
-
-  if (exist) return JSON.parse(fs.readFileSync(cachePath, 'utf8'))
-  writeFile({}, cachePath, { folder: 'hello' })
-  return {}
-}
 
 function countTotalPages(response) {
   const { total, data } = response

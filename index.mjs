@@ -13,13 +13,10 @@
 // 查詢結果如果過多的話該怎麼辦?
 // electron 平台的實作
 // Puppeteer 操偶師的實作必要性研究?
+
 import fs from 'fs'
-
-import utilsInstance from './utils/index.js'
-const { inputChecker, getKeywordsInfoUrl } = utilsInstance
-
-import apiInstance from './api/index.js'
-const { checkLoginStatus } = apiInstance
+import { loading, inputChecker, getKeywordsInfoUrl, colorMap } from './utils/index.js'
+import { checkLoginStatus, getArtWorks } from './api/index.js'
 
 // const { TaskSystem, download } = require('npm-flyc')
 // TODO
@@ -54,45 +51,63 @@ import fetch from 'node-fetch'
 import headersInstance from './utils/header.js'
 const { fetchConfig } = headersInstance
 
-function loading(message = 'Loading', { duration = 300 } = {}) {
-  const steps = ['.', '..', '...']
-  let index = 0
-
-  process.stdout.write(`\r${message}${steps[index++]}`)
-  const timer = setInterval(() => {
-    process.stdout.write(`\r${message}${steps[index++]}`)
-    index = index % 3
-  }, duration)
-
-  return function (result) {
-    clearInterval(timer)
-    if (typeof result !== 'boolean') return
-    const resultIcon = !!result ? '✔' : 'X'
-    process.stdout.write(`\r${message} ${resultIcon}\n`)
+function colorConsole(message, style) {
+  const { Reset, FgYellow, FgRed, Bright } = colorMap
+  switch (style) {
+    case 'error':
+      console.log(`${Bright}${FgRed}${message}${Reset}`)
+      break
+    case 'title':
+    default:
+      console.log(`${Bright}${FgYellow}${message}${Reset}`)
+      break
   }
+}
+function titleStyle(message, newLine = true) {
+  newLine ? console.log() : null
+  colorConsole(message, 'title')
+}
+function errorStyle(message) {
+  colorConsole(message, 'error')
 }
 
 async function start() {
-  let stopLoading = null
-  stopLoading = loading('檢查 input 參數資料')
+  titleStyle('開始')
 
-  // 確認input 資料
+  let loadEnd = null
+
+  loadEnd = loading('檢查 input 參數資料')
   const [inputData, errorMessage] = inputChecker()
-  stopLoading(true)
+  loadEnd(true)
   if (errorMessage) return void console.log(errorMessage)
 
-  stopLoading = loading('檢查登入狀態')
+  loadEnd = loading('檢查登入狀態')
 
   const { keyword, PHPSESSID } = inputData
 
   const isLogin = await checkLoginStatus(PHPSESSID)
-  stopLoading(isLogin)
+  loadEnd(isLogin)
+  if (!isLogin) return void errorStyle('非登入狀態! 請檢查 PHPSESSID 是否正確或已過期')
 
-  if (!isLogin) return void console.log('非登入狀態! 請檢查 PHPSESSID 是否正確或已過期')
+  titleStyle(`搜尋的關鍵字: ${keyword}`)
 
-  console.log(`搜尋的關鍵字: ${keyword}\n`)
+  loadEnd = loading('開始搜尋')
+  const [artWorkRes, artWorkError] = await getArtWorks(PHPSESSID, keyword, 1)
+  loadEnd(!artWorkError)
+  if (artWorkError) return void console.log()
+
+  const { total, data } = artWorkRes
+  console.log(`總筆數: ${total.toLocaleString()}`)
+  console.log(`總頁數: ${countTotalPages(artWorkRes)}`)
 }
 start()
+
+function countTotalPages(response) {
+  const { total, data } = response
+  const currentLengh = data.length
+  const perPage = Math.min(total, currentLengh)
+  return Math.ceil(total / perPage)
+}
 
 // 故事從這裡開始
 ;(async (eachPageInterval = 60) => {

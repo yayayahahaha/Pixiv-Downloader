@@ -18,15 +18,10 @@ const getArtWorks = async (sessionId, keyword, page) => {
   )
 
   const queryString = `?${qs.stringify(params)}`
-  const [response, error] = await request(
-    `${url}${queryString}`,
-    fetchConfig(sessionId)
-  )
+  const [response, error] = await request(`${url}${queryString}`, fetchConfig(sessionId))
   if (error) return [null, error]
 
-  const returnData = (({ data, total }) => ({ data, total }))(
-    response?.body?.illustManga
-  )
+  const returnData = (({ data, total }) => ({ data, total }))(response?.body?.illustManga)
   return [returnData, null]
 }
 
@@ -50,9 +45,7 @@ const getPhotoLiked = async (sessionId, artWorkId) => {
   const [response, error] = await request(url, fetchConfig(sessionId))
   if (error) return [null, error]
 
-  const jsStr = response
-    .split(/<meta name="preload-data" id="meta-preload-data" content='/)[1]
-    .split(/'>/)[0]
+  const jsStr = response.split(/<meta name="preload-data" id="meta-preload-data" content='/)[1].split(/'>/)[0]
   try {
     const data = JSON.parse(jsStr).illust[artWorkId]
     const attributes = [
@@ -64,10 +57,7 @@ const getPhotoLiked = async (sessionId, artWorkId) => {
       'createDate',
       'uploadDate',
     ]
-    const returnItem = attributes.reduce(
-      (map, key) => Object.assign(map, { [key]: data[key] }),
-      {}
-    )
+    const returnItem = attributes.reduce((map, key) => Object.assign(map, { [key]: data[key] }), {})
     return [returnItem, null]
   } catch (e) {
     return [null, e]
@@ -100,8 +90,8 @@ const checkLoginStatus = async function (sessionId) {
 }
 
 module.exports = {
-  getArtWorks,
   checkLoginStatus,
+  getArtWorks,
   getPhotos,
   getPhotoLiked,
   getPhotoInfo,

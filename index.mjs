@@ -54,23 +54,43 @@ import fetch from 'node-fetch'
 import headersInstance from './utils/header.js'
 const { fetchConfig } = headersInstance
 
+function loading(message = 'Loading', { duration = 300 } = {}) {
+  const steps = ['.', '..', '...']
+  let index = 0
+
+  process.stdout.write(`\r${message}${steps[index++]}`)
+  const timer = setInterval(() => {
+    process.stdout.write(`\r${message}${steps[index++]}`)
+    index = index % 3
+  }, duration)
+
+  return function (result) {
+    clearInterval(timer)
+    if (typeof result !== 'boolean') return
+    const resultIcon = !!result ? '✔' : 'X'
+    process.stdout.write(`\r${message} ${resultIcon}\n`)
+  }
+}
+
 async function start() {
+  let stopLoading = null
+  stopLoading = loading('檢查 input 參數資料')
+
   // 確認input 資料
   const [inputData, errorMessage] = inputChecker()
+  stopLoading(true)
   if (errorMessage) return void console.log(errorMessage)
+
+  stopLoading = loading('檢查登入狀態')
 
   const { keyword, PHPSESSID } = inputData
 
-  console.log('檢查登入狀態...\n')
-
   const isLogin = await checkLoginStatus(PHPSESSID)
-  // TODO 刷掉上面那行、然後後面加上 V 或是 X 表示登入成功或失敗
+  stopLoading(isLogin)
+
   if (!isLogin) return void console.log('非登入狀態! 請檢查 PHPSESSID 是否正確或已過期')
 
   console.log(`搜尋的關鍵字: ${keyword}\n`)
-
-  console.log('')
-  console.log('isLogin:', isLogin)
 }
 start()
 

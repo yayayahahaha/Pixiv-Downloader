@@ -2,6 +2,10 @@ const { fetchConfig } = require('../utils/header.js')
 const { request } = require('../utils/request')
 const qs = require('qs')
 
+/**
+ * @function getArtWorks
+ * @description search keyword by page
+ * */
 const getArtWorks = async (sessionId, keyword, page) => {
   const word = keyword
   const p = page
@@ -26,18 +30,25 @@ const getArtWorks = async (sessionId, keyword, page) => {
 }
 
 /**
+ * @functoin getPhotos
  * @description 取得圖片的資訊和讚數
  */
 const getPhotos = async (sessionId, artWorkId) => {
-  const [[photos, photosError], [likedData, likedError]] = await Promise.all([
-    getPhotoInfo(sessionId, artWorkId),
-    getPhotoLiked(sessionId, artWorkId),
-  ])
+  const promises = [getPhotoInfo(sessionId, artWorkId), getPhotoLiked(sessionId, artWorkId)]
+  const [photoSettle, likedSettle] = await Promise.allSettled(promises)
+  const { status: photoStatus, value: photos, reason: photosReason } = photoSettle
+  const { status: likedStatus, value: likedData, reason: likedReason } = likedSettle
+
+  const photosError = photoStatus !== 'rejected' ? false : photosReason
+  const likedError = likedStatus !== 'rejected' ? false : likedReason
+
   if (photosError || likedError) return [null, { photosError, likedError }]
   const result = { photos, ...likedData }
   return [result, null]
 }
+
 /**
+ * @function getPhotoLiked
  * @description 取得圖片的讚數
  * */
 const getPhotoLiked = async (sessionId, artWorkId) => {
@@ -63,7 +74,9 @@ const getPhotoLiked = async (sessionId, artWorkId) => {
     return [null, e]
   }
 }
+
 /**
+ * @function getPhotoInfo
  * @description 取得圖片資訊
  * */
 const getPhotoInfo = async (sessionId, artWorkId) => {

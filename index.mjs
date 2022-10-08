@@ -18,7 +18,8 @@ import fs from 'fs'
 import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile } from './utils/index.js'
 import { checkLoginStatus, getArtWorks } from './api/index.js'
 
-// const { TaskSystem, download } = require('npm-flyc')
+import { TaskSystem, download } from 'npm-flyc'
+
 // TODO
 // SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的 -> 這個會被 Google 的機器人驗正檔下來
 // 或是取得多組SESSID 後放進array 做輪詢減少單一帳號的loading 之類的
@@ -183,7 +184,7 @@ async function firstSearch(keyword) {
   return firstPageData.body.illustManga
 }
 
-// 取得其他所有頁數的資料，不包含以查找過的第一頁
+// 取得其他所有頁數的資料，不包含已查找過的第一頁
 async function getRestPages(keyword, totalPages) {
   const searchFuncArray = []
   for (let i = 1; i <= totalPages; i++) {

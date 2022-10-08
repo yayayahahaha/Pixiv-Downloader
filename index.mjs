@@ -19,7 +19,7 @@
 // 或是取得多組SESSID 後放進array 做輪詢減少單一帳號的loading 之類的
 
 import fs from 'fs'
-import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages } from './utils/index.js'
+import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages, hash } from './utils/index.js'
 import { checkLoginStatus, getArtWorks } from './api/index.js'
 
 import MasterHouse from 'MasterHouse'
@@ -43,6 +43,7 @@ const getSinegleHeader = function (illustId) {
 
 import fetch from 'node-fetch'
 import headersInstance from './utils/header.js'
+import { hasSubscribers } from 'diagnostics_channel'
 const { fetchConfig } = headersInstance
 
 function colorConsole(message, style) {
@@ -94,12 +95,38 @@ async function start() {
   console.log(`總筆數: ${total.toLocaleString()}`)
   console.log(`總頁數: ${countTotalPages(artWorkRes)}`)
 
-  writeFile(artWorkRes)
+  const cacheFileName = `${keyword}.json`
+  const cachePath = `./caches/${cacheFileName}`
+  const cacheData = createOrLoadCache(cachePath)
 
-  const result = await getPhotoByPages(PHPSESSID, keyword, 10)
-  writeFile(result)
+  // HINT 可以做 cache 的點
+  const allPhotos = await getPhotoByPages(PHPSESSID, keyword, 10 /* TODO 一次的頁數? */)
+  allPhotos.forEach((photo) => {
+    const { id } = photo
+    const hashStr = hash(JSON.stringify(photo))
+
+    // 原本不存在
+    if (!cacheData[id]) {
+      cacheData[id] = { photoHistory: [{ hash: hashStr, photo }], hash: hashStr }
+      return
+    }
+    // 原本存在，但 hash 不一樣
+    if (cacheData[id].hash !== hashStr) {
+      cacheData[id].photoHistory.unshift({ hash: hashStr, photo })
+      cacheData[id].hash = hashStr
+    }
+  })
+  writeFile(cacheData, cacheFileName)
 }
 start()
+
+function createOrLoadCache(cachePath) {
+  const exist = fs.existsSync(cachePath)
+
+  if (exist) return JSON.parse(fs.readFileSync(cachePath, 'utf8'))
+  writeFile({}, cachePath, { folder: 'hello' })
+  return {}
+}
 
 function countTotalPages(response) {
   const { total, data } = response
@@ -111,12 +138,6 @@ function countTotalPages(response) {
 // 故事從這裡開始
 ;(async (eachPageInterval = 60) => {
   if (console) return
-
-  let allPagesImagesArray = await getRestPages(keyword, totalPages)
-  allPagesImagesArray = [keywordInfo].concat(allPagesImagesArray)
-
-  // 扁平化
-  allPagesImagesArray = allPagesImagesArray.reduce((array, pageInfo) => array.concat(pageInfo.data), [])
 
   // 綁定bookmarkCount 和likedCount
   const formatedImagesArray = await bindingBookmarkCount(allPagesImagesArray, keyword)

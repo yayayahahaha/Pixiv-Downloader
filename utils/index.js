@@ -1,5 +1,6 @@
 const fs = require('fs')
 const qs = require('qs')
+const crypto = require('crypto')
 
 const { checkAndRead } = require('./path.js')
 const { getArtWorks, getPhotos } = require('../api/index.js')
@@ -205,11 +206,13 @@ async function getPhotoByPages(sessionId, keyword, totalPages, { startPage = 1 }
   }
 
   let allPagesImagesArray = await masterHouse.doJobs(searchFuncArray)
-  // allPagesImagesArray = allPagesImagesArray.map((result) => result.data[0].body.illustManga)
+  allPagesImagesArray = allPagesImagesArray.map(({ result }) => result.data).flat()
   return allPagesImagesArray
 
-  function _create_each_search_page(sessionId, keyword, page) {
-    return getArtWorks(sessionId, keyword, page)
+  async function _create_each_search_page(sessionId, keyword, page) {
+    const [res, error] = await getArtWorks(sessionId, keyword, page)
+    if (error) throw error
+    return res
   }
 }
 
@@ -246,6 +249,14 @@ const colorMap = {
   BgWhite: '\x1b[47m',
 }
 
+/**
+ * @function hash
+ * @description count md5 string hash through digest 'hex'
+ * */
+function hash(str) {
+  return crypto.createHash('md5').update(str).digest('hex')
+}
+
 module.exports = {
   inputChecker,
   getKeywordsInfoUrl,
@@ -253,6 +264,7 @@ module.exports = {
   colorMap,
   writeFile,
   getPhotoByPages,
+  hash,
 
   getParams,
   getAllArtWorks,

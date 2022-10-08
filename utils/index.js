@@ -157,6 +157,28 @@ function loading(message = 'Loading', { duration = 300, steps = ['\\', '|', '/',
 }
 
 /**
+ * @function writeFile
+ * @description for saving cache file to reduce fetching time
+ * */
+function writeFile(rawInfo, rawFileName, { folder = 'cache' } = {}) {
+  const dateMap = {}
+
+  let info = rawInfo
+  if (typeof rawInfo === 'object') info = JSON.stringify(rawInfo, null, 2)
+
+  const fileName = rawFileName || _createFileName()
+
+  fs.writeFileSync([folder, fileName].join('/').replace(/\//g, '/'), info)
+
+  function _createFileName() {
+    const timestamp = Date.now()
+    dateMap[timestamp] = dateMap[timestamp] ? dateMap[timestamp] + 1 : 1
+
+    return `file-${dateMap[timestamp]}.json`
+  }
+}
+
+/**
  * @typedef
  * @reference https://stackoverflow.com/questions/9781218/how-to-change-node-jss-console-font-color
  * @description color code of nodejs
@@ -194,6 +216,7 @@ module.exports = {
   getKeywordsInfoUrl,
   loading,
   colorMap,
+  writeFile,
 
   getParams,
   getAllArtWorks,

@@ -15,7 +15,7 @@
 // Puppeteer 操偶師的實作必要性研究?
 
 import fs from 'fs'
-import { loading, inputChecker, getKeywordsInfoUrl, colorMap } from './utils/index.js'
+import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile } from './utils/index.js'
 import { checkLoginStatus, getArtWorks } from './api/index.js'
 
 // const { TaskSystem, download } = require('npm-flyc')
@@ -99,6 +99,8 @@ async function start() {
   const { total, data } = artWorkRes
   console.log(`總筆數: ${total.toLocaleString()}`)
   console.log(`總頁數: ${countTotalPages(artWorkRes)}`)
+
+  writeFile(artWorkRes)
 }
 start()
 

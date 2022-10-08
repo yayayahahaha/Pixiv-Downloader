@@ -14,8 +14,8 @@
 // electron 平台的實作
 // Puppeteer 操偶師的實作必要性研究?
 
-import fs from 'fs'
-import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile } from './utils/index.js'
+import fs, { write } from 'fs'
+import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages } from './utils/index.js'
 import { checkLoginStatus, getArtWorks } from './api/index.js'
 
 import { TaskSystem, download } from 'npm-flyc'
@@ -39,12 +39,6 @@ const getSinegleHeader = function (illustId) {
   }
   return {
     referer: `https://www.pixiv.net/artworks/${illustId}`,
-  }
-}
-
-const defaultTaskSetting = function () {
-  return {
-    randomDelay: 0,
   }
 }
 
@@ -102,6 +96,9 @@ async function start() {
   console.log(`總頁數: ${countTotalPages(artWorkRes)}`)
 
   writeFile(artWorkRes)
+
+  const result = await getPhotoByPages(PHPSESSID, keyword, 2)
+  writeFile(result)
 }
 start()
 
@@ -115,31 +112,6 @@ function countTotalPages(response) {
 // 故事從這裡開始
 ;(async (eachPageInterval = 60) => {
   if (console) return
-
-  const result = await fetch('https://www.pixiv.net/rpc/index.php?mode=message_thread_unread_count&lang=zh_tw', {
-    headers,
-  })
-  console.log(await result.json())
-
-  return
-
-  // 宣告變數
-  const {
-    keyword,
-    likedLevel,
-    // maxPage, 暫時沒有用到
-    currentSESSID: ssid,
-  } = inputChecked
-  currentSESSID = ssid // TODO: avoid using global variable
-
-  // 取得該搜尋關鍵字的基本資訊
-  console.log(`搜尋的關鍵字: ${keyword}`)
-  console.log('')
-  const keywordInfo = await firstSearch(keyword)
-  if (!keywordInfo) return
-
-  const totalPages = Math.ceil(keywordInfo.total / eachPageInterval)
-  console.log(`共有 ${keywordInfo.total} 筆， ${totalPages} 頁`)
 
   let allPagesImagesArray = await getRestPages(keyword, totalPages)
   allPagesImagesArray = [keywordInfo].concat(allPagesImagesArray)
@@ -168,46 +140,6 @@ function countTotalPages(response) {
 
   console.log('下載完成!')
 })(eachPageInterval)
-
-// 第一次搜尋: 主要是取得總頁數
-async function firstSearch(keyword) {
-  const [firstPageData, error] = await request({
-    method: 'get',
-    url: getKeywordsInfoUrl(keyword),
-    headers: getSearchHeader(),
-  })
-  if (error) {
-    console.error('取得資料失敗!')
-    console.error(error)
-    return false
-  }
-  return firstPageData.body.illustManga
-}
-
-// 取得其他所有頁數的資料，不包含已查找過的第一頁
-async function getRestPages(keyword, totalPages) {
-  const searchFuncArray = []
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1) continue
-    searchFuncArray.push(_create_each_search_page(keyword, i))
-  }
-  const taskNumber = 40
-  const task_search = new TaskSystem(searchFuncArray, taskNumber, defaultTaskSetting())
-
-  let allPagesImagesArray = await task_search.doPromise()
-  allPagesImagesArray = allPagesImagesArray.map((result) => result.data[0].body.illustManga)
-  return allPagesImagesArray
-
-  function _create_each_search_page(keyword, page) {
-    return function () {
-      return request({
-        method: 'get',
-        url: getKeywordsInfoUrl(keyword, page),
-        headers: getSearchHeader(),
-      })
-    }
-  }
-}
 
 // 取得每個作品的連結的快取
 function getPageCache(list, keyword) {

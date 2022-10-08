@@ -34,6 +34,16 @@ async function getAllArtWorks(config) {
   }, [])
 }
 
+/**
+ * @functoin defaultTaskSetting
+ * @description defeault setting of custom task setting, it NEED TO BE INSTANCE
+ * */
+const defaultTaskSetting = function () {
+  return {
+    randomDelay: 0,
+  }
+}
+
 async function getAllPhotos(payload) {
   const { PHPSESSID, artWorks } = payload
   const tasks = _createGetPhotosTasks({ PHPSESSID, artWorks })
@@ -182,6 +192,29 @@ function writeFile(rawInfo, rawFileName, { folder = 'caches' } = {}) {
 }
 
 /**
+ * @function getPhotoByPages
+ * @description get photo list page by page
+ * */
+async function getPhotoByPages(sessionId, keyword, totalPages, { startPage = 1 } = {}) {
+  const searchFuncArray = []
+  for (let i = startPage; i <= totalPages; i++) {
+    searchFuncArray.push(_create_each_search_page(sessionId, keyword, i))
+  }
+  const taskNumber = 40
+  const task_search = new TaskSystem(searchFuncArray, taskNumber, defaultTaskSetting())
+
+  console.log('\n---TODO add mute mode---')
+  let allPagesImagesArray = await task_search.doPromise()
+  console.log('---TODO add mute mode---\n')
+  // allPagesImagesArray = allPagesImagesArray.map((result) => result.data[0].body.illustManga)
+  return allPagesImagesArray
+
+  function _create_each_search_page(sessionId, keyword, page) {
+    return getArtWorks(sessionId, keyword, page)
+  }
+}
+
+/**
  * @typedef
  * @reference https://stackoverflow.com/questions/9781218/how-to-change-node-jss-console-font-color
  * @description color code of nodejs
@@ -220,6 +253,7 @@ module.exports = {
   loading,
   colorMap,
   writeFile,
+  getPhotoByPages,
 
   getParams,
   getAllArtWorks,

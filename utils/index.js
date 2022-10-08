@@ -160,7 +160,7 @@ function loading(message = 'Loading', { duration = 300, steps = ['\\', '|', '/',
  * @function writeFile
  * @description for saving cache file to reduce fetching time
  * */
-function writeFile(rawInfo, rawFileName, { folder = 'cache' } = {}) {
+function writeFile(rawInfo, rawFileName, { folder = 'caches' } = {}) {
   const dateMap = {}
 
   let info = rawInfo
@@ -168,7 +168,10 @@ function writeFile(rawInfo, rawFileName, { folder = 'cache' } = {}) {
 
   const fileName = rawFileName || _createFileName()
 
-  fs.writeFileSync([folder, fileName].join('/').replace(/\//g, '/'), info)
+  const fullPath = [folder, fileName].join('/').replace(/\//g, '/')
+  const folderPath = fullPath.match(/(.*\/).*$/)[1]
+  fs.mkdirSync(folderPath, { recursive: true })
+  fs.writeFileSync(fullPath, info)
 
   function _createFileName() {
     const timestamp = Date.now()

@@ -5,6 +5,9 @@ const { checkAndRead } = require('./path.js')
 const { getArtWorks, getPhotos } = require('../api/index.js')
 const { TaskSystem } = require('npm-flyc')
 
+const MasterHouse = require('MasterHouse')
+const masterHouse = new MasterHouse()
+
 async function getParams(envPath = './input.json') {
   const [env, envError] = await checkAndRead(envPath)
   if (envError) {
@@ -187,7 +190,7 @@ function writeFile(rawInfo, rawFileName, { folder = 'caches' } = {}) {
     const timestamp = Date.now()
     dateMap[timestamp] = dateMap[timestamp] ? dateMap[timestamp] + 1 : 1
 
-    return `file-${dateMap[timestamp]}.json`
+    return `file-${timestamp}-${dateMap[timestamp]}.json`
   }
 }
 
@@ -200,12 +203,8 @@ async function getPhotoByPages(sessionId, keyword, totalPages, { startPage = 1 }
   for (let i = startPage; i <= totalPages; i++) {
     searchFuncArray.push(_create_each_search_page(sessionId, keyword, i))
   }
-  const taskNumber = 40
-  const task_search = new TaskSystem(searchFuncArray, taskNumber, defaultTaskSetting())
 
-  console.log('\n---TODO add mute mode---')
-  let allPagesImagesArray = await task_search.doPromise()
-  console.log('---TODO add mute mode---\n')
+  let allPagesImagesArray = await masterHouse.doJobs(searchFuncArray)
   // allPagesImagesArray = allPagesImagesArray.map((result) => result.data[0].body.illustManga)
   return allPagesImagesArray
 

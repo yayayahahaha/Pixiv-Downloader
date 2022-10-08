@@ -14,19 +14,15 @@
 // electron 平台的實作
 // Puppeteer 操偶師的實作必要性研究?
 
-import fs, { write } from 'fs'
-import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages } from './utils/index.js'
-import { checkLoginStatus, getArtWorks } from './api/index.js'
-
-// import { TaskSystem, download, sayHi } from 'npm-flyc'
-import MasterHouse from 'MasterHouse'
-MasterHouse({ basicDelay: -1 })
-// sayHi()
-
 // TODO
 // SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的 -> 這個會被 Google 的機器人驗正檔下來
 // 或是取得多組SESSID 後放進array 做輪詢減少單一帳號的loading 之類的
-const eachPageInterval = 60
+
+import fs from 'fs'
+import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages } from './utils/index.js'
+import { checkLoginStatus, getArtWorks } from './api/index.js'
+
+import MasterHouse from 'MasterHouse'
 
 const getSearchHeader = function () {
   if (!currentSESSID) console.log('getSearchHeader: currentSESSID 為空！')
@@ -100,7 +96,7 @@ async function start() {
 
   writeFile(artWorkRes)
 
-  const result = await getPhotoByPages(PHPSESSID, keyword, 2)
+  const result = await getPhotoByPages(PHPSESSID, keyword, 10)
   writeFile(result)
 }
 start()
@@ -142,7 +138,7 @@ function countTotalPages(response) {
   fs.writeFileSync('result.json', JSON.stringify(totalImageArray, null, 2))
 
   console.log('下載完成!')
-})(eachPageInterval)
+})()
 
 // 取得每個作品的連結的快取
 function getPageCache(list, keyword) {

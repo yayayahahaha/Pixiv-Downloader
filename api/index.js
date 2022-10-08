@@ -7,8 +7,6 @@ const qs = require('qs')
  * @description search keyword by page
  * */
 const getArtWorks = async (sessionId, keyword, page) => {
-  throw 'hello'
-
   const word = keyword
   const p = page
   const url = `https://www.pixiv.net/ajax/search/artworks/${keyword}`

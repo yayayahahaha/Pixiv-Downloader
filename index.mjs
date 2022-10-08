@@ -18,7 +18,10 @@ import fs, { write } from 'fs'
 import { loading, inputChecker, getKeywordsInfoUrl, colorMap, writeFile, getPhotoByPages } from './utils/index.js'
 import { checkLoginStatus, getArtWorks } from './api/index.js'
 
-import { TaskSystem, download } from 'npm-flyc'
+// import { TaskSystem, download, sayHi } from 'npm-flyc'
+import MasterHouse from 'MasterHouse'
+MasterHouse({ basicDelay: -1 })
+// sayHi()
 
 // TODO
 // SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的 -> 這個會被 Google 的機器人驗正檔下來

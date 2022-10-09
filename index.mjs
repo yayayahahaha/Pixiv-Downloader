@@ -1,9 +1,6 @@
 // TODO
-// 快取的機制的改進：
-// 清除快取的指令，清除全部、清除部分等等的
-// 全域變數的減少使用，如cacheDirectory 或keyword 等
-// 還有模組化各個function 之類的
-// 完成就可以嘗試多重keyword 了
+// 因為如果請求次數過多的話會被阻擋
+// 除了減緩請求次數以外，可以嘗試看看將不用登入就可以取得的 image 資訊不用 session 去請求之類的?
 
 // TODO 抓取某個作者的作品? 這樣的快取應該比較好做
 
@@ -77,7 +74,11 @@ async function start() {
   loadEnd = loading('開始搜尋')
   const [artWorkRes, artWorkError] = await getArtWorks(PHPSESSID, keyword, 1)
   loadEnd(!artWorkError)
-  if (artWorkError) return void console.log()
+  if (artWorkError) {
+    errorStyle('發生錯誤!')
+    console.error(artWorkError)
+    return
+  }
 
   const { total, data } = artWorkRes
   if (total === 0) return console.log('該關鍵字下沒有作品')

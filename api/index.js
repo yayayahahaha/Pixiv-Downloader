@@ -4,28 +4,68 @@ const qs = require('qs')
 
 /**
  * @function getArtWorks
- * @description search keyword by page
+ * @description get both illustrations and monga, but have to login
  * */
-const getArtWorks = async (sessionId, keyword, page) => {
+const getArtWorks = async (sessionId, keyword, page, { mode = '' } = {}) => {
+  return searchPattern('illustManga', { keyword, page, sessionId, mode, type: 'all' })
+}
+
+/**
+ * @function getIllustration
+ * @description get illustrations only
+ * */
+const getIllustration = async (sessionId, keyword, page, { mode = '' } = {}) => {
+  return searchPattern('illust', { keyword, page, sessionId, mode, type: 'illust_and_ugoira' })
+}
+
+/**
+ * @function getManga
+ * @description get manga only
+ * */
+const getManga = async (sessionId, keyword, page, { mode = '' } = {}) => {
+  return searchPattern('manga', { keyword, page, sessionId, mode, type: 'manga' })
+}
+
+/**
+ * @function searchPattern
+ * @description basic search pattern. For illustManga, illust and manga
+ * */
+const searchPattern = async (category, { keyword, page, sessionId, mode, type }) => {
+  let param = ''
+  switch (category) {
+    case 'illust':
+      param = 'illustrations'
+      break
+    case 'manga':
+      param = 'manga'
+      break
+    case 'illustManga':
+      param = 'artworks'
+      break
+    default:
+      console.error(`[searchPattern] category can only be "illust", "manga" or "illustManga". got "${category}"`)
+      return [null, 'wrong category']
+  }
+
+  const url = `https://www.pixiv.net/ajax/search/${param}/${keyword}`
   const word = keyword
   const p = page
-  const url = `https://www.pixiv.net/ajax/search/artworks/${keyword}`
-  const params = Object.assign(
-    {
-      order: 'date_d',
-      mode: 'all',
-      s_mode: 's_tag',
-      type: 'all',
-      lang: 'zh_tw',
-    },
-    { word, p }
-  )
+  const query = {
+    order: 'date_d',
+    mode,
+    s_mode: 's_tag',
+    type,
+    lang: 'zh_tw',
+    word,
+    p,
+  }
+  const queryString = `?${qs.stringify(query)}`
+  const fullPath = `${url}${queryString}`
 
-  const queryString = `?${qs.stringify(params)}`
-  const [response, error] = await request(`${url}${queryString}`, fetchConfig(sessionId))
+  const [response, error] = await request(fullPath, fetchConfig(sessionId))
   if (error) return [null, error]
 
-  const returnData = (({ data, total }) => ({ data, total }))(response?.body?.illustManga)
+  const returnData = (({ data, total }) => ({ data, total }))(response?.body[category])
   return [returnData, null]
 }
 
@@ -106,7 +146,11 @@ const checkLoginStatus = async function (sessionId) {
 
 module.exports = {
   checkLoginStatus,
+
   getArtWorks,
+  getIllustration,
+  getManga,
+
   getPhotoDetail,
   getPhotoLiked,
   getPhotoInfo,

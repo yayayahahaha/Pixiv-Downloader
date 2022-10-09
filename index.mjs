@@ -18,7 +18,7 @@
 // SESSID 的部分可以嘗試打post api 傳遞帳密後直接取得之類的 -> 這個會被 Google 的機器人驗正檔下來
 // 或是取得多組SESSID 後放進array 做輪詢減少單一帳號的loading 之類的
 
-import fs from 'fs'
+import fs, { createWriteStream, write } from 'fs'
 import {
   loading,
   inputChecker,
@@ -28,7 +28,10 @@ import {
   syncCache,
   createOrLoadCache,
 } from './utils/index.js'
-import { checkLoginStatus, getArtWorks } from './api/index.js'
+import { checkLoginStatus, getArtWorks, getPhotoDetail } from './api/index.js'
+
+import MasterHouse from 'MasterHouse'
+const masterHouse = new MasterHouse()
 
 const getSearchHeader = function () {
   if (!currentSESSID) console.log('getSearchHeader: currentSESSID 為空！')
@@ -93,19 +96,61 @@ async function start() {
   if (artWorkError) return void console.log()
 
   const { total, data } = artWorkRes
+  if (total === 0) return console.log('該關鍵字下沒有作品')
+  const totalPages = countTotalPages(artWorkRes)
+
   console.log(`總筆數: ${total.toLocaleString()}`)
-  console.log(`總頁數: ${countTotalPages(artWorkRes)}`)
+  console.log(`總頁數: ${totalPages}`)
 
   const cacheFileName = `${keyword}.json`
   const cachePath = `./caches/${cacheFileName}`
   const cacheData = createOrLoadCache(cachePath)
 
   // HINT 可以做 cache 的點
-  const allPhotos = await getPhotoByPages(PHPSESSID, keyword, 10 /* TODO 一次的頁數? */)
-  allPhotos.forEach((photo) => syncCache(cacheData, 'id', photo))
+  console.log(`逐頁取得圖片的基本資料..`)
+  const allPhotos = await getPhotoByPages(PHPSESSID, keyword, 3 /* totalPages */)
+
+  // NEXT 這裡，相互綁定一下 id 之類的東西
+  console.log(`取得圖片的實際位置和愛心數目..`)
+  const photoMap = await getPhotosSrcAndLiked(PHPSESSID, allPhotos.slice(0, 5))
+
+  writeFile(photoMap)
+
+  allPhotos.slice(0, 5).forEach((photo) => {
+    photo.photos = photoMap[photo.id]?.photos
+    syncCache(cacheData, 'id', photo)
+  })
+
   writeFile(cacheData, cacheFileName)
+  writeFile(photoMap, `liked-${cacheFileName}`)
+
+  const photosWithEverything = allPhotos
+    .slice(0, 5)
+    .map((photo) => {
+      photo.likeCount = photoMap[photo.id].likeCount
+      return photo
+    })
+    .sort((a, b) => b.likeCount - a.likeCount)
+
+  writeFile(photosWithEverything, `all-${cacheFileName}`)
 }
 start()
+
+async function getPhotosSrcAndLiked(PHPSESSID, allPhotos) {
+  const jobs = allPhotos.map(
+    ({ id }, i) =>
+      () =>
+        getPhotoDetail(PHPSESSID, allPhotos[i].id)
+  )
+  return (await masterHouse.doJobs(jobs)).reduce((map, { result }) => {
+    const info = result[0]
+    if (!info) return map
+    map[info.id] = info
+    return map
+  }, {})
+
+  // TODO 為什麼這邊不會幫我自動補齊 masterHouse 的東西 doJobs、但會補齊 jobsCreateHelper ?
+}
 
 function countTotalPages(response) {
   const { total, data } = response

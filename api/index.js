@@ -30,20 +30,22 @@ const getArtWorks = async (sessionId, keyword, page) => {
 }
 
 /**
- * @functoin getPhotos
+ * @functoin getPhotoDetail
  * @description 取得圖片的資訊和讚數
  */
-const getPhotos = async (sessionId, artWorkId) => {
+const getPhotoDetail = async (sessionId, artWorkId) => {
   const promises = [getPhotoInfo(sessionId, artWorkId), getPhotoLiked(sessionId, artWorkId)]
   const [photoSettle, likedSettle] = await Promise.allSettled(promises)
-  const { status: photoStatus, value: photos, reason: photosReason } = photoSettle
-  const { status: likedStatus, value: likedData, reason: likedReason } = likedSettle
+  const { status: photoStatus, value: photosValue, reason: photosReason } = photoSettle
+  const { status: likedStatus, value: likedDataValue, reason: likedReason } = likedSettle
 
   const photosError = photoStatus !== 'rejected' ? false : photosReason
   const likedError = likedStatus !== 'rejected' ? false : likedReason
 
   if (photosError || likedError) return [null, { photosError, likedError }]
-  const result = { photos, ...likedData }
+  const [photos] = photosValue
+  const [likedData] = likedDataValue
+  const result = { id: artWorkId, photos, ...likedData }
   return [result, null]
 }
 
@@ -105,7 +107,7 @@ const checkLoginStatus = async function (sessionId) {
 module.exports = {
   checkLoginStatus,
   getArtWorks,
-  getPhotos,
+  getPhotoDetail,
   getPhotoLiked,
   getPhotoInfo,
 }

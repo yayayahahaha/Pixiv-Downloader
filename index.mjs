@@ -5,6 +5,8 @@
 // 還有模組化各個function 之類的
 // 完成就可以嘗試多重keyword 了
 
+// TODO 抓取某個作者的作品? 這樣的快取應該比較好做
+
 // OTHERS TODO
 // 依作者分類
 // 計算作者總星星數和取出基本資訊
@@ -30,8 +32,7 @@ import {
 
 import { checkLoginStatus, getArtWorks, getPhotoDetail } from './api/index.js'
 
-import MasterHouse from 'MasterHouse'
-const masterHouse = new MasterHouse()
+import { masterHouse } from './masterHouse.js'
 
 function colorConsole(message, style) {
   const { Reset, FgYellow, FgRed, Bright } = colorMap
@@ -93,7 +94,6 @@ async function start() {
   console.log(`逐頁取得圖片的基本資料..`)
   const allPhotos = await getPhotoByPages(PHPSESSID, keyword, totalPages)
 
-  // NEXT 這裡，相互綁定一下 id 之類的東西
   console.log(`取得圖片的實際位置和愛心數目..`)
   const photoMap = await getPhotosSrcAndLiked(PHPSESSID, allPhotos)
 
@@ -117,11 +117,9 @@ async function start() {
 start()
 
 async function getPhotosSrcAndLiked(PHPSESSID, allPhotos) {
-  const jobs = allPhotos.map(
-    ({ id }, i) =>
-      () =>
-        getPhotoDetail(PHPSESSID, allPhotos[i].id)
-  )
+  const jobs = allPhotos.map(({ id }, i) => {
+    return () => getPhotoDetail(PHPSESSID, allPhotos[i].id)
+  })
   return (await masterHouse.doJobs(jobs)).reduce((map, { result }) => {
     const info = result[0]
     if (!info) return map

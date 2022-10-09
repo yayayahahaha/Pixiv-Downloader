@@ -6,8 +6,7 @@ const { checkAndRead } = require('./path.js')
 const { getArtWorks, getPhotos } = require('../api/index.js')
 const { TaskSystem } = require('npm-flyc')
 
-const MasterHouse = require('MasterHouse')
-const masterHouse = new MasterHouse()
+const { masterHouse } = require('../masterHouse.js')
 
 async function getParams(envPath = './input.json') {
   const [env, envError] = await checkAndRead(envPath)
@@ -209,10 +208,12 @@ async function getPhotoByPages(sessionId, keyword, totalPages, { startPage = 1 }
   allPagesImagesArray = allPagesImagesArray.map(({ result }) => result.data).flat()
   return allPagesImagesArray
 
-  async function _create_each_search_page(sessionId, keyword, page) {
-    const [res, error] = await getArtWorks(sessionId, keyword, page)
-    if (error) throw error
-    return res
+  function _create_each_search_page(sessionId, keyword, page) {
+    return async function () {
+      const [res, error] = await getArtWorks(sessionId, keyword, page)
+      if (error) throw error
+      return res
+    }
   }
 }
 

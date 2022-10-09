@@ -91,13 +91,13 @@ async function start() {
 
   // HINT 可以做 cache 的點
   console.log(`逐頁取得圖片的基本資料..`)
-  const allPhotos = await getPhotoByPages(PHPSESSID, keyword, 3 /* totalPages */)
+  const allPhotos = await getPhotoByPages(PHPSESSID, keyword, totalPages)
 
   // NEXT 這裡，相互綁定一下 id 之類的東西
   console.log(`取得圖片的實際位置和愛心數目..`)
-  const photoMap = await getPhotosSrcAndLiked(PHPSESSID, allPhotos.slice(0, 5))
+  const photoMap = await getPhotosSrcAndLiked(PHPSESSID, allPhotos)
 
-  allPhotos.slice(0, 5).forEach((photo) => {
+  allPhotos.forEach((photo) => {
     photo.photos = photoMap[photo.id]?.photos
     syncCache(cacheData, 'id', photo)
   })
@@ -106,7 +106,6 @@ async function start() {
   writeFile(photoMap, `liked-${cacheFileName}`)
 
   const photosWithEverything = allPhotos
-    .slice(0, 5)
     .map((photo) => {
       photo.likeCount = photoMap[photo.id].likeCount
       return photo

@@ -118,8 +118,8 @@ async function start() {
 start()
 
 async function getPhotosSrcAndLiked(PHPSESSID, allPhotos) {
-  const jobs = allPhotos.map(({ id }, i) => {
-    return () => getPhotoDetail(PHPSESSID, allPhotos[i].id)
+  const jobs = allPhotos.map(({ id }) => {
+    return () => getPhotoDetail(PHPSESSID, id)
   })
   return (await masterHouse.doJobs(jobs)).reduce((map, { result }) => {
     const info = result[0]

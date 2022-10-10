@@ -28,6 +28,7 @@ const getManga = async (sessionId, keyword, page, { mode = '' } = {}) => {
 
 /**
  * @function searchPattern
+ * @param category<string> - illust, manga and illusManga
  * @description basic search pattern. For illustManga, illust and manga
  * */
 const searchPattern = async (category, { keyword, page, sessionId, mode, type }) => {

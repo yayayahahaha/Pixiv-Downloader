@@ -137,8 +137,12 @@ const getPhotoInfo = async (sessionId, artWorkId) => {
  * */
 const checkLoginStatus = async function (sessionId) {
   const url = 'https://www.pixiv.net/ajax/linked_service/tumeng'
+  const config = fetchConfig(sessionId)
+  console.log('config:', config)
 
-  const [data, error] = await request(url, fetchConfig(sessionId))
+  console.log({ url, ...config })
+
+  const [data, error] = await request({ url, ...config })
   if (error) return false
   if (data.error) return false
 

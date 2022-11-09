@@ -60,10 +60,8 @@ const searchPattern = async (category, { keyword, page, sessionId, mode, type })
     word,
     p,
   }
-  const queryString = `?${qs.stringify(query)}`
-  const fullPath = `${url}${queryString}`
 
-  const [response, error] = await request(fullPath, fetchConfig(sessionId))
+  const [response, error] = await request({ url, ...fetchConfig(sessionId), params: query })
   if (error) return [null, error]
 
   const returnData = (({ data, total }) => ({ data, total }))(response?.body[category])
@@ -138,9 +136,6 @@ const getPhotoInfo = async (sessionId, artWorkId) => {
 const checkLoginStatus = async function (sessionId) {
   const url = 'https://www.pixiv.net/ajax/linked_service/tumeng'
   const config = fetchConfig(sessionId)
-  console.log('config:', config)
-
-  console.log({ url, ...config })
 
   const [data, error] = await request({ url, ...config })
   if (error) return false
